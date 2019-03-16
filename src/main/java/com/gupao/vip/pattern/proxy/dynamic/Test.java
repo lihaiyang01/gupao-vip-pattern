@@ -14,7 +14,7 @@ public class Test {
 
         MyDynamicProxyHandler myDynamicProxyHandler = new MyDynamicProxyHandler();
         Person p = (Person) myDynamicProxyHandler.getProxyInstance(new Zhangsan());
-        p.eat();
+        p.xiangQing();
     }
 
 }

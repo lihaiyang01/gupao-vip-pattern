@@ -7,8 +7,8 @@ package com.gupao.vip.pattern.proxy.bean;
  */
 public class Zhangsan implements Person {
 
-    public void eat() {
-        System.out.println("吃饭");
+    public void xiangQing() {
+        System.out.println("相亲");
     }
 
 }

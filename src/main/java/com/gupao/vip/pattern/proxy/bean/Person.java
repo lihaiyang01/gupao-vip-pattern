@@ -7,6 +7,6 @@ package com.gupao.vip.pattern.proxy.bean;
  */
 public interface Person {
 
-    void eat();
+    void xiangQing();
 
 }
