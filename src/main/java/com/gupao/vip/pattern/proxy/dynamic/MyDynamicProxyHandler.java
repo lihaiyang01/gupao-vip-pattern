@@ -19,6 +19,7 @@ public class MyDynamicProxyHandler implements InvocationHandler {
     }
 
 
+    //proxy-代理对象 method-目标对象的方法名 args-目标方法的参数
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 
         before();
