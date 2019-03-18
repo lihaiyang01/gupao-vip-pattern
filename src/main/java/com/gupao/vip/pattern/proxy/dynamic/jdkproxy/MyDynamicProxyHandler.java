@@ -1,4 +1,4 @@
-package com.gupao.vip.pattern.proxy.dynamic;
+package com.gupao.vip.pattern.proxy.dynamic.jdkproxy;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

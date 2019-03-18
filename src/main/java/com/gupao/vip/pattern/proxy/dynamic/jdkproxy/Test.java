@@ -1,4 +1,4 @@
-package com.gupao.vip.pattern.proxy.dynamic;
+package com.gupao.vip.pattern.proxy.dynamic.jdkproxy;
 
 import com.gupao.vip.pattern.proxy.bean.Person;
 import com.gupao.vip.pattern.proxy.bean.Zhangsan;
