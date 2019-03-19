@@ -9,8 +9,5 @@
         <module name="gupao-vip-pattern" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="gupao-vip-pattern" target="1.8" />
-    </bytecodeTargetLevel>
   </component>
 </project>
