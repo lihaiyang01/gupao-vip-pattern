@@ -1,0 +1,117 @@
+工厂模式(Factory)：我只要结果，过程不管，你自己实现
+单例模式(Singleton)：只此一份，别无分号
+原型模式(Prototype)：自己是主分身，其他都是分身，只是外表一样
+代理模式(Proxy)：自己不方便出面，找人代办
+委派模式(Delegate)：分派任务，我是负责人，功劳是我的
+策略模式(Strategy)：条条道路通罗马，供用户自己选择哪一条
+模板模式(Template)：统一规范的流程，具体操作可以自己实现
+适配器模式(Adapter)：新旧兼容
+装饰器模式(Decorator)：同宗同源，人披上了衣服还是人
+观察者模式(Observer)：监控你的一举一动，有任何异动都触发通知
+
+列举SpringAOP、IOC、DI应用的代码片段：
+/**
+ * 企业标签配置
+ */
+@RestController
+@RequestMapping(value = "/company/label")
+@Api(tags = "企业标签配置")
+@Slf4j
+public class CompanyLabelController {
+
+    @Autowired
+    private CompanyLabelService companyLabelService;
+
+
+    @ApiOperation(value = "批量保存企业标签", notes = "")
+    @ApiImplicitParam(dataType = "CompanyLabelAddBatchQO", name = "companyLabelAddBatchQO", value = "批量保存企业标签", required = true)
+    @PostMapping("/save/batch")
+    public ServiceResponse<String> saveCompanyLabelBatch(@RequestHeader("i-companyId") Long companyId,
+                                                         @RequestBody @Valid CompanyLabelAddBatchQO companyLabelAddBatchQO) {
+
+        if (companyId != null) {
+            companyLabelAddBatchQO.setCompanyId(companyId);
+        }
+        if (companyLabelAddBatchQO.getCompanyId() == null) {
+            throw new BizException(ResponseErrorCodeEnum.PARAMETER_NULL_ERR.getCode(), "企业ID为空");
+        }
+        int i = companyLabelService.addCompanyLabelBatch(companyLabelAddBatchQO);
+        if (i == 0) {
+            throw new BizException(ResponseErrorCodeEnum.SYSTEM_ERR.getCode(), "批量添加企业标签失败");
+        }
+        return new ServiceResponse<>();
+    }
+
+}
+
+
+@Service
+public class CompanyLabelServiceImpl implements CompanyLabelService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CompanyLabelServiceImpl.class);
+
+    @Autowired
+    private IdRestService idRestService;
+
+    @Autowired
+    private CompanyLabelMapper companyLabelMapper;
+
+    @Autowired
+    private RedisLockService redisLockService;
+
+    private static final Integer COMPANY_LABEL_UPP_LIMIT = 8;
+
+    private static final String COMPANY_LABEL_LOCK_KEY = "COMPANY_LABEL_LOCK_KEY:%s";
+
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public int addCompanyLabelBatch(CompanyLabelAddBatchQO companyLabelAddBatchQO) {
+
+        int result = 0;
+        Long companyId = companyLabelAddBatchQO.getCompanyId();
+        List<CompanyLabelAddQO> labelList = companyLabelAddBatchQO.getLabelList();
+        String key = String.format(COMPANY_LABEL_LOCK_KEY, companyId);
+        String value = String.valueOf(System.currentTimeMillis() + TIMEOUT);
+        if (CollectionUtils.isEmpty(labelList)) {
+            throw new BizException(ResponseErrorCodeEnum.PARAMETER_NULL_ERR);
+        }
+        try{
+            boolean lock = redisLockService.lock(key, value);
+            while (!lock) {
+                Thread.sleep(500L);
+                lock = redisLockService.lock(key, value);
+            }
+            if (labelList.size() > COMPANY_LABEL_UPP_LIMIT) {
+                throw new BizException(ResponseErrorCodeEnum.PARAMETER_ERR.getCode(), "已超出企业标签上限[" + COMPANY_LABEL_UPP_LIMIT + "个标签]");
+            }
+            List<Long> ids = idRestService.mulNextId(labelList.size());
+            logger.info("ID服务器返回: {}", ids);
+            if (ids == null || ids.size() != labelList.size()) {
+                throw new BizException(ResponseErrorCodeEnum.ID_NUM_ERR);
+            }
+            //先删除企业标签
+            companyLabelMapper.deleteByCompanyId(companyId);
+            //批量添加企业标签
+            List<CompanyLabel> list = new ArrayList<>();
+            for (int i = 0; i < labelList.size(); i++) {
+                CompanyLabelAddQO companyLabelAddQO = labelList.get(i);
+                CompanyLabel label = new CompanyLabel();
+                label.setId(ids.get(i));
+                label.setCompanyId(companyId);
+                label.setName(companyLabelAddQO.getName());
+                label.setSort(companyLabelAddQO.getSort());
+                list.add(label);
+            }
+            return companyLabelMapper.insertBatch(list);
+        } catch (InterruptedException e) {
+            logger.error("批量添加标签失败, " + e);
+            redisLockService.unlock(key, value);
+        } finally {
+            redisLockService.unlock(key, value);
+        }
+        return result;
+
+    }
+
+}
